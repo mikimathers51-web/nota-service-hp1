@@ -84,32 +84,23 @@ jobs:
             echo "❌ src/index.html not found!"
             exit 1
           fi
-          ls -la www/
 
-      - name: 🔨 Add Android Platform
+      - name: 🧹 Clean & Add Android Platform
         run: |
+          echo "Checking android directory..."
+          if [ -d "android" ]; then
+            echo "Removing existing android directory..."
+            rm -rf android
+          fi
           echo "Adding Android platform..."
           npx cap add android
           echo "✅ Android platform added"
-          ls -la android/
 
       - name: 🔄 Sync Capacitor
         run: |
           echo "Syncing Capacitor..."
           npx cap sync android
           echo "✅ Sync complete"
-          ls -la android/app/
-
-      - name: 🔍 Check Android Project Structure
-        run: |
-          echo "=== Checking android directory ==="
-          ls -la android/ || echo "android dir not found"
-          echo ""
-          echo "=== Checking for gradlew ==="
-          ls -la android/gradlew || echo "gradlew not found"
-          echo ""
-          echo "=== Checking app directory ==="
-          ls -la android/app/ || echo "app dir not found"
 
       - name: 🔨 Build Debug APK
         run: |
@@ -126,7 +117,6 @@ jobs:
             echo "size_bytes=$(stat -c%s "$APK_PATH")" >> $GITHUB_ENV
           else
             echo "❌ APK not found"
-            echo "=== Contents of outputs directory ==="
             find android/app/build -name "*.apk" 2>/dev/null || echo "No APKs found"
             exit 1
           fi
