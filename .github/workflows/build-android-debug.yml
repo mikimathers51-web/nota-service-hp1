@@ -27,7 +27,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          # ❌ No cache - karena tidak ada lock file
 
       - name: ☕ Setup Java 17
         uses: actions/setup-java@v4
@@ -38,8 +37,42 @@ jobs:
       - name: 🤖 Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: 📝 Fix package.json versions
+        run: |
+          cat > package.json << 'EOF'
+          {
+            "name": "nota-service-hp",
+            "version": "1.0.0",
+            "description": "Nota Service HP - Android Debug",
+            "main": "index.html",
+            "scripts": {
+              "build": "mkdir -p www && cp src/index.html www/index.html",
+              "cap:add": "cap add android",
+              "cap:sync": "cap sync",
+              "cap:open": "cap open android",
+              "build:debug": "npm run build && cap sync android && cd android && ./gradlew assembleDebug",
+              "install:apk": "adb install android/app/build/outputs/apk/debug/app-debug.apk"
+            },
+            "dependencies": {
+              "@capacitor/android": "^5.7.0",
+              "@capacitor/core": "^5.7.0",
+              "@capacitor/camera": "^5.0.9",
+              "@capacitor/filesystem": "^5.0.7",
+              "@capacitor/share": "^5.0.7",
+              "@capacitor/contacts": "^5.0.7",
+              "@capacitor-community/bluetooth-le": "^3.1.0",
+              "@capacitor/splash-screen": "^5.0.7",
+              "@capacitor/status-bar": "^5.0.7"
+            },
+            "devDependencies": {
+              "@capacitor/cli": "^5.7.0"
+            }
+          }
+          EOF
+          echo "✅ package.json overwritten with valid versions"
+
       - name: 📦 Install dependencies
-        run: npm install  # ✅ Gunakan npm install, bukan npm ci
+        run: npm install
 
       - name: 🏗️ Prepare www directory
         run: |
@@ -49,10 +82,8 @@ jobs:
             echo "✅ Using src/index.html"
           else
             echo "❌ src/index.html not found!"
-            echo "   Please add your HTML file to src/index.html"
             exit 1
           fi
-          ls -la www/
 
       - name: 🔨 Add Android Platform (if needed)
         run: |
