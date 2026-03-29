@@ -33,6 +33,21 @@
     
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
 
+    <!-- === PERBAIKAN: Queries untuk Camera & Gallery (Android 11+) === -->
+    <queries>
+        <!-- Camera -->
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+        <!-- Gallery / File Picker -->
+        <intent>
+            <action android:name="android.intent.action.GET_CONTENT" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.PICK" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
