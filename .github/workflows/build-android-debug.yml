@@ -37,7 +37,7 @@ jobs:
       - name: 🤖 Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: 📝 Fix package.json (With Contacts & Bluetooth)
+      - name: 📝 Fix package.json (Official Contacts)
         run: |
           cat > package.json << 'EOF'
           {
@@ -69,7 +69,6 @@ jobs:
             }
           }
           EOF
-          echo "✅ package.json created"
 
       - name: 📦 Install dependencies
         run: npm install
@@ -87,20 +86,30 @@ jobs:
 
       - name: 🧹 Clean & Add Android Platform
         run: |
-          echo "Checking android directory..."
-          if [ -d "android" ]; then
-            echo "Removing existing android directory..."
-            rm -rf android
-          fi
-          echo "Adding Android platform..."
+          rm -rf android 2>/dev/null || true
           npx cap add android
-          echo "✅ Android platform added"
 
-      - name: 🔄 Sync Capacitor
+      - name: 🔐 Inject Android Permissions (Contacts)
         run: |
-          echo "Syncing Capacitor..."
-          npx cap sync android
-          echo "✅ Sync complete"
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          
+          # Inject READ_CONTACTS permission
+          if ! grep -q "READ_CONTACTS" "$MANIFEST"; then
+            sed -i 's/<\/manifest>/    <uses-permission android:name="android.permission.READ_CONTACTS" \/>\n<\/manifest>/' "$MANIFEST"
+            echo "✅ READ_CONTACTS permission added"
+          fi
+          
+          # Inject WRITE_CONTACTS permission (untuk save contact)
+          if ! grep -q "WRITE_CONTACTS" "$MANIFEST"; then
+            sed -i 's/<\/manifest>/    <uses-permission android:name="android.permission.WRITE_CONTACTS" \/>\n<\/manifest>/' "$MANIFEST"
+            echo "✅ WRITE_CONTACTS permission added"
+          fi
+          
+          echo "=== AndroidManifest.xml ==="
+          cat "$MANIFEST"
+
+      - name: 🔄 Sync Capacitor (with Contacts)
+        run: npx cap sync android
 
       - name: 🔨 Build Debug APK
         run: |
@@ -117,7 +126,6 @@ jobs:
             echo "size_bytes=$(stat -c%s "$APK_PATH")" >> $GITHUB_ENV
           else
             echo "❌ APK not found"
-            find android/app/build -name "*.apk" 2>/dev/null || echo "No APKs found"
             exit 1
           fi
 
