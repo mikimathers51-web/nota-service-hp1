@@ -1,4 +1,4 @@
-name: 📱 Build Android Debug APK
+name: 📱 Build Android Debug APK (Capacitor 7)
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ on:
         description: '📝 Catatan build (opsional)'
         required: false
         type: string
-        default: 'Build dari HP'
+        default: 'Build dengan Contacts v7'
   
   push:
     branches: [main, master]
@@ -23,7 +23,7 @@ jobs:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🔧 Setup Node.js
+      - name: 🔧 Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -37,35 +37,36 @@ jobs:
       - name: 🤖 Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: 📝 Fix package.json (Official Contacts)
+      # ==========================================
+      # PACKAGE.JSON DENGAN V7
+      # ==========================================
+      - name: 📝 Create package.json (Capacitor 7)
         run: |
           cat > package.json << 'EOF'
           {
             "name": "nota-service-hp",
-            "version": "1.0.0",
-            "description": "Nota Service HP - Android Debug",
+            "version": "2.0.0",
+            "description": "Nota Service HP - Capacitor 7",
             "main": "index.html",
             "scripts": {
               "build": "mkdir -p www && cp src/index.html www/index.html",
               "cap:add": "cap add android",
               "cap:sync": "cap sync",
-              "cap:open": "cap open android",
-              "build:debug": "npm run build && cap sync android && cd android && ./gradlew assembleDebug",
-              "install:apk": "adb install android/app/build/outputs/apk/debug/app-debug.apk"
+              "cap:open": "cap open android"
             },
             "dependencies": {
-              "@capacitor/android": "^5.7.0",
-              "@capacitor/core": "^5.7.0",
-              "@capacitor/camera": "^5.0.9",
-              "@capacitor/filesystem": "^5.0.7",
-              "@capacitor/share": "^5.0.7",
-              "@capacitor/splash-screen": "^5.0.7",
-              "@capacitor/status-bar": "^5.0.7",
-              "@capacitor-community/contacts": "^5.0.0",
-              "@capacitor-community/bluetooth-le": "^3.1.0"
+              "@capacitor/android": "^7.0.0",
+              "@capacitor/core": "^7.0.0",
+              "@capacitor/camera": "^7.0.0",
+              "@capacitor/filesystem": "^7.0.0",
+              "@capacitor/share": "^7.0.0",
+              "@capacitor/splash-screen": "^7.0.0",
+              "@capacitor/status-bar": "^7.0.0",
+              "@capacitor-community/contacts": "^7.0.0",
+              "@capacitor-community/bluetooth-le": "^7.0.0"
             },
             "devDependencies": {
-              "@capacitor/cli": "^5.7.0"
+              "@capacitor/cli": "^7.0.0"
             }
           }
           EOF
@@ -84,31 +85,40 @@ jobs:
             exit 1
           fi
 
-      - name: 🧹 Clean & Add Android Platform
+      # ==========================================
+      # CLEAN INSTALL ANDROID PLATFORM
+      # ==========================================
+      - name: 🧹 Clean & Add Android Platform (Capacitor 7)
         run: |
-          rm -rf android 2>/dev/null || true
+          rm -rf android
           npx cap add android
 
-      - name: 🔐 Inject Android Permissions (Contacts)
+      # ==========================================
+      # INJECT PERMISSIONS (V7 COMPATIBLE)
+      # ==========================================
+      - name: 🔐 Inject Android Permissions
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           
-          # Inject READ_CONTACTS permission
-          if ! grep -q "READ_CONTACTS" "$MANIFEST"; then
-            sed -i 's/<\/manifest>/    <uses-permission android:name="android.permission.READ_CONTACTS" \/>\n<\/manifest>/' "$MANIFEST"
-            echo "✅ READ_CONTACTS permission added"
-          fi
+          # Backup
+          cp "$MANIFEST" "$MANIFEST.bak"
           
-          # Inject WRITE_CONTACTS permission (untuk save contact)
-          if ! grep -q "WRITE_CONTACTS" "$MANIFEST"; then
-            sed -i 's/<\/manifest>/    <uses-permission android:name="android.permission.WRITE_CONTACTS" \/>\n<\/manifest>/' "$MANIFEST"
-            echo "✅ WRITE_CONTACTS permission added"
-          fi
+          # Hapus permission lama jika ada
+          sed -i '/READ_CONTACTS/d' "$MANIFEST"
+          sed -i '/WRITE_CONTACTS/d' "$MANIFEST"
+          
+          # Inject sebelum </manifest>
+          sed -i 's/<\/manifest>/    <uses-permission android:name="android.permission.READ_CONTACTS" \/>\
+              <uses-permission android:name="android.permission.WRITE_CONTACTS" \/>\
+          <\/manifest>/' "$MANIFEST"
           
           echo "=== AndroidManifest.xml ==="
           cat "$MANIFEST"
 
-      - name: 🔄 Sync Capacitor (with Contacts)
+      # ==========================================
+      # SYNC CAPACITOR
+      # ==========================================
+      - name: 🔄 Sync Capacitor
         run: npx cap sync android
 
       - name: 🔨 Build Debug APK
@@ -132,30 +142,26 @@ jobs:
       - name: 📤 Upload APK (Latest)
         uses: actions/upload-artifact@v4
         with:
-          name: nota-service-hp-latest
+          name: nota-service-hp-latest-v7
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
       - name: 📤 Upload APK (Versioned)
         uses: actions/upload-artifact@v4
         with:
-          name: nota-service-hp-build-${{ github.run_number }}
+          name: nota-service-hp-build-${{ github.run_number }}-v7
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 90
 
       - name: 📝 Build Summary
         run: |
           SIZE_MB=$((${{ env.size_bytes }} / 1024 / 1024))
-          echo "## 📱 Build Success!" >> $GITHUB_STEP_SUMMARY
+          echo "## 📱 Build Success! (Capacitor 7)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Detail | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| 🔢 Build Number | ${{ github.run_number }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📦 Capacitor | 7.x |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📇 Contacts | @capacitor-community/contacts v7 |" >> $GITHUB_STEP_SUMMARY
           echo "| 📝 Notes | ${{ github.event.inputs.build_notes || 'Auto build' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 📦 APK Size | ${SIZE_MB} MB |" >> $GITHUB_STEP_SUMMARY
-          echo "| ⬇️ Download | Artifacts di atas |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📲 Cara Download dari HP:" >> $GITHUB_STEP_SUMMARY
-          echo "1. Tap 'Artifacts' section di atas" >> $GITHUB_STEP_SUMMARY
-          echo "2. Pilih 'nota-service-hp-latest'" >> $GITHUB_STEP_SUMMARY
-          echo "3. Download APK" >> $GITHUB_STEP_SUMMARY
