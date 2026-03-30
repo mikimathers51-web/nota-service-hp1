@@ -41,35 +41,33 @@ jobs:
           echo "org.gradle.daemon=false" >> ~/.gradle/gradle.properties
 
       # ==========================================
-      # STEP 1: Create package.json dengan echo
+      # STEP 1: Create package.json
       # ==========================================
       - name: 📝 Create package.json
         run: |
-          echo '{' > package.json
-          echo '  "name": "nota-service-hp",' >> package.json
-          echo '  "version": "2.0.0",' >> package.json
-          echo '  "description": "Nota Service HP - Capacitor 7",' >> package.json
-          echo '  "main": "index.html",' >> package.json
-          echo '  "scripts": {' >> package.json
-          echo '    "build": "mkdir -p www && cp src/index.html www/index.html"' >> package.json
-          echo '  },' >> package.json
-          echo '  "dependencies": {' >> package.json
-          echo '    "@capacitor/android": "^7.0.0",' >> package.json
-          echo '    "@capacitor/core": "^7.0.0",' >> package.json
-          echo '    "@capacitor/camera": "^7.0.0",' >> package.json
-          echo '    "@capacitor/filesystem": "^7.0.0",' >> package.json
-          echo '    "@capacitor/share": "^7.0.0",' >> package.json
-          echo '    "@capacitor/splash-screen": "^7.0.0",' >> package.json
-          echo '    "@capacitor/status-bar": "^7.0.0",' >> package.json
-          echo '    "@capacitor-community/contacts": "^7.0.0",' >> package.json
-          echo '    "@capacitor-community/bluetooth-le": "^7.0.0"' >> package.json
-          echo '  },' >> package.json
-          echo '  "devDependencies": {' >> package.json
-          echo '    "@capacitor/cli": "^7.0.0"' >> package.json
-          echo '  }' >> package.json
-          echo '}' >> package.json
-          
-          cat package.json
+          echo '{
+            "name": "nota-service-hp",
+            "version": "2.0.0",
+            "description": "Nota Service HP - Capacitor 7",
+            "main": "index.html",
+            "scripts": {
+              "build": "mkdir -p www && cp src/index.html www/index.html"
+            },
+            "dependencies": {
+              "@capacitor/android": "^7.0.0",
+              "@capacitor/core": "^7.0.0",
+              "@capacitor/camera": "^7.0.0",
+              "@capacitor/filesystem": "^7.0.0",
+              "@capacitor/share": "^7.0.0",
+              "@capacitor/splash-screen": "^7.0.0",
+              "@capacitor/status-bar": "^7.0.0",
+              "@capacitor-community/contacts": "^7.0.0",
+              "@capacitor-community/bluetooth-le": "^7.0.0"
+            },
+            "devDependencies": {
+              "@capacitor/cli": "^7.0.0"
+            }
+          }' > package.json
 
       # ==========================================
       # STEP 2: Install dependencies
@@ -95,40 +93,42 @@ jobs:
           fi
 
       # ==========================================
-      # STEP 4: Create capacitor.config.json dengan echo
+      # STEP 4: Create capacitor.config.json
       # ==========================================
       - name: 🔧 Create capacitor.config.json
         run: |
-          echo '{' > capacitor.config.json
-          echo '  "appId": "com.notaservicehp.app",' >> capacitor.config.json
-          echo '  "appName": "Nota Service HP",' >> capacitor.config.json
-          echo '  "webDir": "www",' >> capacitor.config.json
-          echo '  "server": {' >> capacitor.config.json
-          echo '    "androidScheme": "https",' >> capacitor.config.json
-          echo '    "cleartext": true' >> capacitor.config.json
-          echo '  },' >> capacitor.config.json
-          echo '  "plugins": {' >> capacitor.config.json
-          echo '    "SplashScreen": {' >> capacitor.config.json
-          echo '      "launchShowDuration": 2000,' >> capacitor.config.json
-          echo '      "backgroundColor": "#667eea",' >> capacitor.config.json
-          echo '      "showSpinner": true,' >> capacitor.config.json
-          echo '      "spinnerColor": "#ffffff"' >> capacitor.config.json
-          echo '    }' >> capacitor.config.json
-          echo '  }' >> capacitor.config.json
-          echo '}' >> capacitor.config.json
-          
-          cat capacitor.config.json
+          echo '{
+            "appId": "com.notaservicehp.app",
+            "appName": "Nota Service HP",
+            "webDir": "www",
+            "server": {
+              "androidScheme": "https",
+              "cleartext": true
+            },
+            "plugins": {
+              "SplashScreen": {
+                "launchShowDuration": 2000,
+                "backgroundColor": "#667eea",
+                "showSpinner": true,
+                "spinnerColor": "#ffffff"
+              }
+            }
+          }' > capacitor.config.json
 
       # ==========================================
-      # STEP 5: Add Android Platform
+      # STEP 5: Add Android Platform (PERBAIKAN)
       # ==========================================
       - name: 🤖 Add Android Platform
         run: |
           rm -rf android
-          npx cap add android@^7.0.0
           
+          # Install platform android
+          npx cap add android 2>&1 | tee add.log
+          
+          # Cek hasil
           if [ ! -d "android" ]; then
             echo "❌ Failed to create android directory"
+            cat add.log
             exit 1
           fi
           
@@ -167,7 +167,6 @@ jobs:
           echo '</manifest>' >> "$MANIFEST"
           
           echo "✅ Permissions injected"
-          cat "$MANIFEST"
 
       # ==========================================
       # STEP 7: Sync Capacitor
