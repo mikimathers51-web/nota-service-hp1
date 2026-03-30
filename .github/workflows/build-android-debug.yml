@@ -1,4 +1,4 @@
-name: 📱 Build Android Debug APK (Capacitor 7)
+name: 📱 Build Android Debug APK (Capacitor 6)
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ on:
         description: '📝 Catatan build'
         required: false
         type: string
-        default: 'Build Capacitor 7'
+        default: 'Build Capacitor 6'
   
   push:
     branches: [main, master]
@@ -20,10 +20,10 @@ jobs:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🔧 Setup Node.js 20
+      - name: 🔧 Setup Node.js 18
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '18'
 
       - name: ☕ Setup Java 17
         uses: actions/setup-java@v4
@@ -37,37 +37,42 @@ jobs:
       - name: ⚙️ Setup Gradle
         run: |
           mkdir -p ~/.gradle
-          echo "org.gradle.jvmargs=-Xmx4096m" >> ~/.gradle/gradle.properties
+          echo "org.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8" >> ~/.gradle/gradle.properties
           echo "org.gradle.daemon=false" >> ~/.gradle/gradle.properties
+          echo "org.gradle.parallel=true" >> ~/.gradle/gradle.properties
 
       # ==========================================
-      # STEP 1: Create package.json
+      # STEP 1: Create package.json (Capacitor 6)
       # ==========================================
       - name: 📝 Create package.json
         run: |
           echo '{
             "name": "nota-service-hp",
-            "version": "2.0.0",
-            "description": "Nota Service HP - Capacitor 7",
+            "version": "1.0.0",
+            "description": "Nota Service HP - Capacitor 6",
             "main": "index.html",
             "scripts": {
-              "build": "mkdir -p www && cp src/index.html www/index.html"
+              "build": "mkdir -p www && cp src/index.html www/index.html",
+              "cap:sync": "npx cap sync android",
+              "build:debug": "npm run build && npx cap sync android && cd android && ./gradlew assembleDebug"
             },
             "dependencies": {
-              "@capacitor/android": "^7.0.0",
-              "@capacitor/core": "^7.0.0",
-              "@capacitor/camera": "^7.0.0",
-              "@capacitor/filesystem": "^7.0.0",
-              "@capacitor/share": "^7.0.0",
-              "@capacitor/splash-screen": "^7.0.0",
-              "@capacitor/status-bar": "^7.0.0",
-              "@capacitor-community/contacts": "^7.0.0",
-              "@capacitor-community/bluetooth-le": "^7.0.0"
+              "@capacitor/android": "^6.1.2",
+              "@capacitor/core": "^6.1.2",
+              "@capacitor/camera": "^6.0.2",
+              "@capacitor/filesystem": "^6.0.1",
+              "@capacitor/share": "^6.0.2",
+              "@capacitor/splash-screen": "^6.0.3",
+              "@capacitor/status-bar": "^6.0.1",
+              "@capacitor-community/contacts": "^6.0.0",
+              "@capacitor-community/bluetooth-le": "^6.0.0"
             },
             "devDependencies": {
-              "@capacitor/cli": "^7.0.0"
+              "@capacitor/cli": "^6.1.2"
             }
           }' > package.json
+          
+          cat package.json
 
       # ==========================================
       # STEP 2: Install dependencies
@@ -75,7 +80,7 @@ jobs:
       - name: 📦 Install dependencies
         run: |
           npm install
-          npm install -g @capacitor/cli@^7.0.0
+          npm install -g @capacitor/cli@^6.1.2
 
       # ==========================================
       # STEP 3: Prepare www directory
@@ -89,6 +94,7 @@ jobs:
             echo "✅ src/index.html copied"
           else
             echo "❌ src/index.html not found!"
+            ls -la
             exit 1
           fi
 
@@ -111,21 +117,31 @@ jobs:
                 "backgroundColor": "#667eea",
                 "showSpinner": true,
                 "spinnerColor": "#ffffff"
+              },
+              "StatusBar": {
+                "style": "light",
+                "backgroundColor": "#667eea"
+              }
+            },
+            "android": {
+              "buildOptions": {
+                "keystorePath": null,
+                "keystoreAlias": null
               }
             }
           }' > capacitor.config.json
+          
+          cat capacitor.config.json
 
       # ==========================================
-      # STEP 5: Add Android Platform (PERBAIKAN)
+      # STEP 5: Add Android Platform
       # ==========================================
       - name: 🤖 Add Android Platform
         run: |
           rm -rf android
           
-          # Install platform android
           npx cap add android 2>&1 | tee add.log
           
-          # Cek hasil
           if [ ! -d "android" ]; then
             echo "❌ Failed to create android directory"
             cat add.log
@@ -133,9 +149,10 @@ jobs:
           fi
           
           echo "✅ Android platform created"
+          ls -la android/
 
       # ==========================================
-      # STEP 6: Inject Permissions
+      # STEP 6: Inject Android Permissions
       # ==========================================
       - name: 🔐 Inject Android Permissions
         run: |
@@ -147,7 +164,18 @@ jobs:
             exit 1
           fi
           
+          echo "✅ Found AndroidManifest.xml"
+          cat "$MANIFEST"
+          
+          # Backup
           cp "$MANIFEST" "$MANIFEST.bak"
+          
+          # Hapus permission lama jika ada
+          sed -i '/READ_CONTACTS/d' "$MANIFEST"
+          sed -i '/WRITE_CONTACTS/d' "$MANIFEST"
+          sed -i '/BLUETOOTH/d' "$MANIFEST"
+          sed -i '/ACCESS_FINE_LOCATION/d' "$MANIFEST"
+          sed -i '/ACCESS_COARSE_LOCATION/d' "$MANIFEST"
           
           # Hapus </manifest> terakhir
           sed -i '/^<\/manifest>$/d' "$MANIFEST"
@@ -167,12 +195,22 @@ jobs:
           echo '</manifest>' >> "$MANIFEST"
           
           echo "✅ Permissions injected"
+          cat "$MANIFEST"
 
       # ==========================================
       # STEP 7: Sync Capacitor
       # ==========================================
       - name: 🔄 Sync Capacitor
-        run: npx cap sync android
+        run: |
+          npx cap sync android 2>&1 | tee sync.log
+          
+          if grep -q "error" sync.log; then
+            echo "❌ Sync failed"
+            cat sync.log
+            exit 1
+          fi
+          
+          echo "✅ Sync completed"
 
       # ==========================================
       # STEP 8: Build APK
@@ -180,23 +218,75 @@ jobs:
       - name: 🔨 Build Debug APK
         run: |
           cd android
-          ./gradlew clean assembleDebug --no-daemon --stacktrace
+          chmod +x gradlew
+          ./gradlew clean assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
 
+      # ==========================================
+      # STEP 9: Verify APK
+      # ==========================================
       - name: 🔍 Verify APK
         run: |
           APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
+          
           if [ -f "$APK_PATH" ]; then
             echo "✅ APK built successfully"
             ls -lh "$APK_PATH"
             echo "size_bytes=$(stat -c%s "$APK_PATH")" >> $GITHUB_ENV
           else
             echo "❌ APK not found"
+            echo "=== Available files ==="
+            find android -name "*.apk" 2>/dev/null || echo "No APK found"
             exit 1
           fi
 
-      - name: 📤 Upload APK
+      # ==========================================
+      # STEP 10: Upload APK
+      # ==========================================
+      - name: 📤 Upload APK (Latest)
         uses: actions/upload-artifact@v4
         with:
-          name: nota-service-hp-v7
+          name: nota-service-hp-latest
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
+
+      - name: 📤 Upload APK (Versioned)
+        uses: actions/upload-artifact@v4
+        with:
+          name: nota-service-hp-build-${{ github.run_number }}
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 90
+
+      # ==========================================
+      # STEP 11: Build Summary
+      # ==========================================
+      - name: 📝 Build Summary
+        run: |
+          SIZE_MB=$((${{ env.size_bytes }} / 1024 / 1024))
+          echo "## ✅ Build Success! (Capacitor 6)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Detail | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔢 Build Number | ${{ github.run_number }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📦 Capacitor | 6.1.2 |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📇 Contacts | @capacitor-community/contacts ^6.0.0 |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📡 Bluetooth | @capacitor-community/bluetooth-le ^6.0.0 |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📝 Notes | ${{ github.event.inputs.build_notes || 'Auto build' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📦 APK Size | ${SIZE_MB} MB |" >> $GITHUB_STEP_SUMMARY
+          echo "| ⬇️ Download | Artifacts di atas |" >> $GITHUB_STEP_SUMMARY
+
+      # ==========================================
+      # DEBUG: On Failure
+      # ==========================================
+      - name: 📋 Debug on Failure
+        if: failure()
+        run: |
+          echo "=== package.json ==="
+          cat package.json
+          echo "=== capacitor.config.json ==="
+          cat capacitor.config.json
+          if [ -d "android" ]; then
+            echo "=== AndroidManifest.xml ==="
+            cat android/app/src/main/AndroidManifest.xml 2>/dev/null || echo "Not found"
+            echo "=== Build log ==="
+            cat android/build.log 2>/dev/null | tail -50 || echo "No build log"
+          fi
