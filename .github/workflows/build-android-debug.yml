@@ -37,39 +37,39 @@ jobs:
       - name: ⚙️ Setup Gradle
         run: |
           mkdir -p ~/.gradle
-          echo "org.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8" >> ~/.gradle/gradle.properties
+          echo "org.gradle.jvmargs=-Xmx4096m" >> ~/.gradle/gradle.properties
           echo "org.gradle.daemon=false" >> ~/.gradle/gradle.properties
 
       # ==========================================
-      # STEP 1: Create package.json
+      # STEP 1: Create package.json dengan echo
       # ==========================================
       - name: 📝 Create package.json
         run: |
-          cat > package.json << 'EOF'
-          {
-            "name": "nota-service-hp",
-            "version": "2.0.0",
-            "description": "Nota Service HP - Capacitor 7",
-            "main": "index.html",
-            "scripts": {
-              "build": "mkdir -p www && cp src/index.html www/index.html"
-            },
-            "dependencies": {
-              "@capacitor/android": "^7.0.0",
-              "@capacitor/core": "^7.0.0",
-              "@capacitor/camera": "^7.0.0",
-              "@capacitor/filesystem": "^7.0.0",
-              "@capacitor/share": "^7.0.0",
-              "@capacitor/splash-screen": "^7.0.0",
-              "@capacitor/status-bar": "^7.0.0",
-              "@capacitor-community/contacts": "^7.0.0",
-              "@capacitor-community/bluetooth-le": "^7.0.0"
-            },
-            "devDependencies": {
-              "@capacitor/cli": "^7.0.0"
-            }
-          }
-          EOF
+          echo '{' > package.json
+          echo '  "name": "nota-service-hp",' >> package.json
+          echo '  "version": "2.0.0",' >> package.json
+          echo '  "description": "Nota Service HP - Capacitor 7",' >> package.json
+          echo '  "main": "index.html",' >> package.json
+          echo '  "scripts": {' >> package.json
+          echo '    "build": "mkdir -p www && cp src/index.html www/index.html"' >> package.json
+          echo '  },' >> package.json
+          echo '  "dependencies": {' >> package.json
+          echo '    "@capacitor/android": "^7.0.0",' >> package.json
+          echo '    "@capacitor/core": "^7.0.0",' >> package.json
+          echo '    "@capacitor/camera": "^7.0.0",' >> package.json
+          echo '    "@capacitor/filesystem": "^7.0.0",' >> package.json
+          echo '    "@capacitor/share": "^7.0.0",' >> package.json
+          echo '    "@capacitor/splash-screen": "^7.0.0",' >> package.json
+          echo '    "@capacitor/status-bar": "^7.0.0",' >> package.json
+          echo '    "@capacitor-community/contacts": "^7.0.0",' >> package.json
+          echo '    "@capacitor-community/bluetooth-le": "^7.0.0"' >> package.json
+          echo '  },' >> package.json
+          echo '  "devDependencies": {' >> package.json
+          echo '    "@capacitor/cli": "^7.0.0"' >> package.json
+          echo '  }' >> package.json
+          echo '}' >> package.json
+          
+          cat package.json
 
       # ==========================================
       # STEP 2: Install dependencies
@@ -86,118 +86,85 @@ jobs:
         run: |
           mkdir -p www
           
-          # Copy index.html
           if [ -f "src/index.html" ]; then
             cp src/index.html www/index.html
             echo "✅ src/index.html copied"
           else
             echo "❌ src/index.html not found!"
-            ls -la
             exit 1
           fi
-          
-          # Copy capacitor.config.json
-          if [ -f "capacitor.config.json" ]; then
-            cp capacitor.config.json www/
-            echo "✅ capacitor.config.json copied"
-          else
-            echo "⚠️ capacitor.config.json not found, creating default"
-            cat > www/capacitor.config.json << 'EOF'
-            {
-              "appId": "com.notaservicehp.app",
-              "appName": "Nota Service HP",
-              "webDir": "www"
-            }
-            EOF
-          fi
-          
-          ls -la www/
 
       # ==========================================
-      # STEP 4: Initialize Capacitor config (jika belum ada)
+      # STEP 4: Create capacitor.config.json dengan echo
       # ==========================================
-      - name: 🔧 Initialize Capacitor Config
+      - name: 🔧 Create capacitor.config.json
         run: |
-          if [ ! -f "capacitor.config.json" ]; then
-            cat > capacitor.config.json << 'EOF'
-            {
-              "appId": "com.notaservicehp.app",
-              "appName": "Nota Service HP",
-              "webDir": "www",
-              "server": {
-                "androidScheme": "https",
-                "cleartext": true
-              },
-              "plugins": {
-                "SplashScreen": {
-                  "launchShowDuration": 2000,
-                  "backgroundColor": "#667eea",
-                  "showSpinner": true,
-                  "spinnerColor": "#ffffff"
-                }
-              }
-            }
-            EOF
-          fi
+          echo '{' > capacitor.config.json
+          echo '  "appId": "com.notaservicehp.app",' >> capacitor.config.json
+          echo '  "appName": "Nota Service HP",' >> capacitor.config.json
+          echo '  "webDir": "www",' >> capacitor.config.json
+          echo '  "server": {' >> capacitor.config.json
+          echo '    "androidScheme": "https",' >> capacitor.config.json
+          echo '    "cleartext": true' >> capacitor.config.json
+          echo '  },' >> capacitor.config.json
+          echo '  "plugins": {' >> capacitor.config.json
+          echo '    "SplashScreen": {' >> capacitor.config.json
+          echo '      "launchShowDuration": 2000,' >> capacitor.config.json
+          echo '      "backgroundColor": "#667eea",' >> capacitor.config.json
+          echo '      "showSpinner": true,' >> capacitor.config.json
+          echo '      "spinnerColor": "#ffffff"' >> capacitor.config.json
+          echo '    }' >> capacitor.config.json
+          echo '  }' >> capacitor.config.json
+          echo '}' >> capacitor.config.json
+          
+          cat capacitor.config.json
 
       # ==========================================
-      # STEP 5: Add Android Platform (PENTING!)
+      # STEP 5: Add Android Platform
       # ==========================================
       - name: 🤖 Add Android Platform
         run: |
-          # Hapus android lama jika ada
           rm -rf android
+          npx cap add android@^7.0.0
           
-          # Add platform android
-          npx cap add android@^7.0.0 2>&1 | tee add-android.log
-          
-          # Verifikasi
           if [ ! -d "android" ]; then
             echo "❌ Failed to create android directory"
-            cat add-android.log
             exit 1
           fi
           
           echo "✅ Android platform created"
-          ls -la android/
 
       # ==========================================
-      # STEP 6: Inject Permissions (SETELAH android dibuat)
+      # STEP 6: Inject Permissions
       # ==========================================
       - name: 🔐 Inject Android Permissions
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           
-          # Cek file ada
           if [ ! -f "$MANIFEST" ]; then
-            echo "❌ AndroidManifest.xml not found at $MANIFEST"
-            find android -name "AndroidManifest.xml" 2>/dev/null
+            echo "❌ AndroidManifest.xml not found"
+            find android -name "AndroidManifest.xml"
             exit 1
           fi
           
-          echo "✅ Found AndroidManifest.xml"
-          cat "$MANIFEST"
-          
-          # Backup
           cp "$MANIFEST" "$MANIFEST.bak"
           
-          # Inject permissions menggunakan sed
-          sed -i '/<\/manifest>/d' "$MANIFEST"
+          # Hapus </manifest> terakhir
+          sed -i '/^<\/manifest>$/d' "$MANIFEST"
           
-          cat >> "$MANIFEST" << 'EOF'
-          
-              <!-- Contacts Plugin -->
-              <uses-permission android:name="android.permission.READ_CONTACTS" />
-              <uses-permission android:name="android.permission.WRITE_CONTACTS" />
-              
-              <!-- Bluetooth Plugin -->
-              <uses-permission android:name="android.permission.BLUETOOTH" />
-              <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
-              <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-              <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-              
-          </manifest>
-          EOF
+          # Tambah permissions
+          echo '' >> "$MANIFEST"
+          echo '    <!-- Contacts Plugin -->' >> "$MANIFEST"
+          echo '    <uses-permission android:name="android.permission.READ_CONTACTS" />' >> "$MANIFEST"
+          echo '    <uses-permission android:name="android.permission.WRITE_CONTACTS" />' >> "$MANIFEST"
+          echo '' >> "$MANIFEST"
+          echo '    <!-- Bluetooth Plugin -->' >> "$MANIFEST"
+          echo '    <uses-permission android:name="android.permission.BLUETOOTH" />' >> "$MANIFEST"
+          echo '    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />' >> "$MANIFEST"
+          echo '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />' >> "$MANIFEST"
+          echo '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />' >> "$MANIFEST"
+          echo '' >> "$MANIFEST"
+          echo '</manifest>' >> "$MANIFEST"
           
           echo "✅ Permissions injected"
           cat "$MANIFEST"
@@ -206,12 +173,7 @@ jobs:
       # STEP 7: Sync Capacitor
       # ==========================================
       - name: 🔄 Sync Capacitor
-        run: |
-          npx cap sync android 2>&1 | tee sync.log || {
-            echo "❌ Sync failed"
-            cat sync.log
-            exit 1
-          }
+        run: npx cap sync android
 
       # ==========================================
       # STEP 8: Build APK
@@ -219,11 +181,7 @@ jobs:
       - name: 🔨 Build Debug APK
         run: |
           cd android
-          ./gradlew clean assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log || {
-            echo "❌ Build failed"
-            tail -100 build.log
-            exit 1
-          }
+          ./gradlew clean assembleDebug --no-daemon --stacktrace
 
       - name: 🔍 Verify APK
         run: |
@@ -234,7 +192,6 @@ jobs:
             echo "size_bytes=$(stat -c%s "$APK_PATH")" >> $GITHUB_ENV
           else
             echo "❌ APK not found"
-            find android -name "*.apk" 2>/dev/null
             exit 1
           fi
 
