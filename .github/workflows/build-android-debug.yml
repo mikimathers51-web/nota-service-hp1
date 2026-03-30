@@ -37,7 +37,7 @@ jobs:
       - name: 🤖 Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: 📝 Write package.json (Correct plugins)
+      - name: 📝 Fix package.json (Official Contacts)
         run: |
           cat > package.json << 'EOF'
           {
@@ -79,11 +79,8 @@ jobs:
           if [ -f "src/index.html" ]; then
             cp src/index.html www/index.html
             echo "✅ Using src/index.html"
-          elif [ -f "index.html" ]; then
-            cp index.html www/index.html
-            echo "✅ Using index.html from root"
           else
-            echo "❌ No index.html found!"
+            echo "❌ src/index.html not found!"
             exit 1
           fi
 
@@ -92,17 +89,26 @@ jobs:
           rm -rf android 2>/dev/null || true
           npx cap add android
 
-      - name: 📝 Copy custom AndroidManifest.xml (with all permissions)
+      - name: 🔐 Inject Android Permissions (Contacts)
         run: |
-          if [ -f "AndroidManifest.xml" ]; then
-            cp AndroidManifest.xml android/app/src/main/AndroidManifest.xml
-            echo "✅ Custom manifest copied"
-          else
-            echo "❌ AndroidManifest.xml not found! Using default, but permissions may be missing."
-            exit 1
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          
+          # Inject READ_CONTACTS permission
+          if ! grep -q "READ_CONTACTS" "$MANIFEST"; then
+            sed -i 's/<\/manifest>/    <uses-permission android:name="android.permission.READ_CONTACTS" \/>\n<\/manifest>/' "$MANIFEST"
+            echo "✅ READ_CONTACTS permission added"
           fi
+          
+          # Inject WRITE_CONTACTS permission (untuk save contact)
+          if ! grep -q "WRITE_CONTACTS" "$MANIFEST"; then
+            sed -i 's/<\/manifest>/    <uses-permission android:name="android.permission.WRITE_CONTACTS" \/>\n<\/manifest>/' "$MANIFEST"
+            echo "✅ WRITE_CONTACTS permission added"
+          fi
+          
+          echo "=== AndroidManifest.xml ==="
+          cat "$MANIFEST"
 
-      - name: 🔄 Sync Capacitor
+      - name: 🔄 Sync Capacitor (with Contacts)
         run: npx cap sync android
 
       - name: 🔨 Build Debug APK
