@@ -37,7 +37,7 @@ jobs:
       - name: 🤖 Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: 📝 Write package.json (Official Contacts)
+      - name: 📝 Write package.json (Correct plugins)
         run: |
           cat > package.json << 'EOF'
           {
@@ -61,7 +61,7 @@ jobs:
               "@capacitor/share": "^5.0.7",
               "@capacitor/splash-screen": "^5.0.7",
               "@capacitor/status-bar": "^5.0.7",
-              "@capacitor/contacts": "^5.0.0",
+              "@capacitor-community/contacts": "^5.0.0",
               "@capacitor-community/bluetooth-le": "^3.1.0"
             },
             "devDependencies": {
@@ -92,7 +92,7 @@ jobs:
           rm -rf android 2>/dev/null || true
           npx cap add android
 
-      - name: 📝 Copy custom AndroidManifest.xml
+      - name: 📝 Copy custom AndroidManifest.xml (with all permissions)
         run: |
           if [ -f "AndroidManifest.xml" ]; then
             cp AndroidManifest.xml android/app/src/main/AndroidManifest.xml
