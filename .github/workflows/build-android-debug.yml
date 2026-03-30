@@ -4,16 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       build_notes:
-        description: '📝 Catatan build (opsional)'
+        description: '📝 Catatan build'
         required: false
         type: string
-        default: 'Build dengan Contacts v7'
+        default: 'Build Capacitor 7'
   
   push:
     branches: [main, master]
-    paths:
-      - 'src/**'
-      - '.github/workflows/**'
 
 jobs:
   build-android-debug:
@@ -38,9 +35,19 @@ jobs:
         uses: android-actions/setup-android@v3
 
       # ==========================================
-      # PACKAGE.JSON DENGAN V7
+      # PERBAIKAN 1: Setup Gradle Properties
       # ==========================================
-      - name: 📝 Create package.json (Capacitor 7)
+      - name: ⚙️ Setup Gradle
+        run: |
+          mkdir -p ~/.gradle
+          echo "org.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8" >> ~/.gradle/gradle.properties
+          echo "org.gradle.daemon=false" >> ~/.gradle/gradle.properties
+          echo "org.gradle.parallel=true" >> ~/.gradle/gradle.properties
+
+      # ==========================================
+      # PERBAIKAN 2: Create package.json dengan benar
+      # ==========================================
+      - name: 📝 Create package.json
         run: |
           cat > package.json << 'EOF'
           {
@@ -50,9 +57,7 @@ jobs:
             "main": "index.html",
             "scripts": {
               "build": "mkdir -p www && cp src/index.html www/index.html",
-              "cap:add": "cap add android",
-              "cap:sync": "cap sync",
-              "cap:open": "cap open android"
+              "cap:sync": "npx cap sync android"
             },
             "dependencies": {
               "@capacitor/android": "^7.0.0",
@@ -72,29 +77,40 @@ jobs:
           EOF
 
       - name: 📦 Install dependencies
-        run: npm install
+        run: |
+          npm install
+          npm install --save-dev @capacitor/cli@^7.0.0
 
+      # ==========================================
+      # PERBAIKAN 3: Prepare www dengan benar
+      # ==========================================
       - name: 🏗️ Prepare www directory
         run: |
           mkdir -p www
           if [ -f "src/index.html" ]; then
             cp src/index.html www/index.html
-            echo "✅ Using src/index.html"
+            echo "✅ src/index.html copied"
           else
             echo "❌ src/index.html not found!"
+            ls -la
             exit 1
+          fi
+          
+          # Copy capacitor.config.json ke www
+          if [ -f "capacitor.config.json" ]; then
+            cp capacitor.config.json www/
           fi
 
       # ==========================================
-      # CLEAN INSTALL ANDROID PLATFORM
+      # PERBAIKAN 4: Clean install Android
       # ==========================================
-      - name: 🧹 Clean & Add Android Platform (Capacitor 7)
+      - name: 🧹 Clean & Add Android Platform
         run: |
           rm -rf android
-          npx cap add android
+          npx cap add android@^7.0.0
 
       # ==========================================
-      # INJECT PERMISSIONS (V7 COMPATIBLE)
+      # PERBAIKAN 5: Inject permissions dengan benar
       # ==========================================
       - name: 🔐 Inject Android Permissions
         run: |
@@ -103,29 +119,68 @@ jobs:
           # Backup
           cp "$MANIFEST" "$MANIFEST.bak"
           
-          # Hapus permission lama jika ada
+          # Hapus permission lama
           sed -i '/READ_CONTACTS/d' "$MANIFEST"
           sed -i '/WRITE_CONTACTS/d' "$MANIFEST"
+          sed -i '/BLUETOOTH/d' "$MANIFEST"
+          sed -i '/LOCATION/d' "$MANIFEST"
           
-          # Inject sebelum </manifest>
-          sed -i 's/<\/manifest>/    <uses-permission android:name="android.permission.READ_CONTACTS" \/>\
-              <uses-permission android:name="android.permission.WRITE_CONTACTS" \/>\
-          <\/manifest>/' "$MANIFEST"
-          
-          echo "=== AndroidManifest.xml ==="
+          # Inject permissions sebelum </manifest>
+          python3 << 'PYEOF'
+          import re
+
+          with open("android/app/src/main/AndroidManifest.xml", "r") as f:
+              content = f.read()
+
+          permissions = '''    <!-- Contacts -->
+              <uses-permission android:name="android.permission.READ_CONTACTS" />
+              <uses-permission android:name="android.permission.WRITE_CONTACTS" />
+              
+              <!-- Bluetooth -->
+              <uses-permission android:name="android.permission.BLUETOOTH" />
+              <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+              <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+              <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+              
+          </manifest>'''
+
+          content = re.sub(r'</manifest>', permissions, content)
+
+          with open("android/app/src/main/AndroidManifest.xml", "w") as f:
+              f.write(content)
+
+          print("✅ Permissions injected")
+          PYEOF
+
           cat "$MANIFEST"
 
       # ==========================================
-      # SYNC CAPACITOR
+      # PERBAIKAN 6: Sync dengan verbose
       # ==========================================
       - name: 🔄 Sync Capacitor
-        run: npx cap sync android
+        run: |
+          npx cap sync android --verbose 2>&1 | tee sync.log || {
+            echo "❌ Sync failed"
+            cat sync.log
+            exit 1
+          }
 
+      # ==========================================
+      # PERBAIKAN 7: Build dengan clean
+      # ==========================================
       - name: 🔨 Build Debug APK
         run: |
           cd android
-          chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          
+          # Clean dulu
+          ./gradlew clean --no-daemon
+          
+          # Build dengan no-daemon untuk menghindari memory issue
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log || {
+            echo "❌ Build failed"
+            tail -200 build.log
+            exit 1
+          }
 
       - name: 🔍 Verify APK
         run: |
@@ -136,32 +191,22 @@ jobs:
             echo "size_bytes=$(stat -c%s "$APK_PATH")" >> $GITHUB_ENV
           else
             echo "❌ APK not found"
+            find android -name "*.apk" 2>/dev/null
             exit 1
           fi
 
-      - name: 📤 Upload APK (Latest)
+      - name: 📤 Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: nota-service-hp-latest-v7
+          name: nota-service-hp-v7
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
-
-      - name: 📤 Upload APK (Versioned)
-        uses: actions/upload-artifact@v4
-        with:
-          name: nota-service-hp-build-${{ github.run_number }}-v7
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 90
 
       - name: 📝 Build Summary
         run: |
           SIZE_MB=$((${{ env.size_bytes }} / 1024 / 1024))
-          echo "## 📱 Build Success! (Capacitor 7)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## ✅ Build Success!" >> $GITHUB_STEP_SUMMARY
           echo "| Detail | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| 🔢 Build Number | ${{ github.run_number }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 📦 Capacitor | 7.x |" >> $GITHUB_STEP_SUMMARY
-          echo "| 📇 Contacts | @capacitor-community/contacts v7 |" >> $GITHUB_STEP_SUMMARY
-          echo "| 📝 Notes | ${{ github.event.inputs.build_notes || 'Auto build' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 📦 APK Size | ${SIZE_MB} MB |" >> $GITHUB_STEP_SUMMARY
+          echo "| Capacitor | 7.x |" >> $GITHUB_STEP_SUMMARY
+          echo "| Size | ${SIZE_MB} MB |" >> $GITHUB_STEP_SUMMARY
