@@ -1,17 +1,19 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  root: 'src',                    // index.html ada di dalam folder src
+  root: 'src',
   build: {
-    outDir: '../www',             // hasil build masuk ke folder www (Capacitor pakai ini)
+    outDir: '../www',
     emptyOutDir: true,
     rollupOptions: {
       input: 'src/index.html'
     }
   },
-  // Agar lebih cepat di development
-  server: {
-    port: 5173,
-    open: true
+  // PERBAIKAN UTAMA: Support Top-level await
+  esbuild: {
+    target: 'es2022'        // atau 'chrome100', 'safari15'
+  },
+  build: {
+    target: 'es2022'        // Tambahkan ini juga
   }
 });
